@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Stream</title>
+    <style>
+        #thumbnailPreview {
+            position: absolute;
+            bottom: 80px;
+            left: 0;
+            display: none;
+            pointer-events: none;
+        }
+        #videoPlayerContainer {
+            position: relative;
+            width: 100%;
+        }
+        #videoPlayer {
+            width: 100%;
+            max-width: 1500px;
+            height: auto;
+        }
+        #customProgressBar {
+            position: absolute;
+            bottom: 10px;
+            width: 100%;
+            height: 15px;
+            background: rgba(0, 0, 0, 0);
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="videoPlayerContainer">
+        <video id="videoPlayer" controls>
+            <source src="stream.mpd" type="application/dash+xml">
+            Your browser does not support the video tag.
+        </video>
+        <div id="customProgressBar"></div>
+        <img id="thumbnailPreview" src="" alt="Thumbnail" />
+    </div>
+
+    <div>
+        <input id="rewindTime" type="number" placeholder="Enter seconds to rewind" min="0">
+        <button onclick="rewindTo()">Rewind</button>
+        <button onclick="jumpToLive()">Go to Live</button>
+        <button onclick="takeScreenshot()">Take Screenshot</button>
+    </div>
+
+    <canvas id="canvas" style="display:none;"></canvas>
+
+    <script src="https://cdn.dashjs.org/latest/dash.all.min.js"></script>
+    <script>
+        var player;
+
+        document.addEventListener("DOMContentLoaded", function() {
+            var url = 'stream.mpd';
+            player = dashjs.MediaPlayer().create();
+            player.initialize(document.querySelector("#videoPlayer"), url, true);
+        });
+
+        document.getElementById('customProgressBar').addEventListener('mousemove', function(event) {
+            var rect = this.getBoundingClientRect();
+            var x = event.clientX - rect.left;
+            var totalTime = player.duration();
+            var percentage = x / this.offsetWidth;
+            var time = totalTime * percentage;
+            var thumbNumber = Math.floor(time / 10);
+            var thumbnailPath = `thumbnails/thumb${String(thumbNumber).padStart(3, '0')}.jpg`;
+            document.getElementById('thumbnailPreview').style.left = x + 'px';
+            document.getElementById('thumbnailPreview').src = thumbnailPath;
+            document.getElementById('thumbnailPreview').style.display = 'block';
+        });
+
+        document.getElementById('customProgressBar').addEventListener('mouseleave', function(event) {
+            document.getElementById('thumbnailPreview').style.display = 'none';
+        });
+
+        function rewindTo() {
+            var videoPlayer = document.getElementById('videoPlayer');
+            var time = document.getElementById('rewindTime').value;
+            videoPlayer.currentTime = Math.max(videoPlayer.currentTime - time, 0);
+        }
+
+        function jumpToLive() {
+            if (player.isDynamic()) {
+                player.seek(player.duration());
+            }
+        }
+
+        function takeScreenshot() {
+            var videoPlayer = document.getElementById('videoPlayer');
+            var canvas = document.getElementById('canvas');
+            canvas.width = videoPlayer.videoWidth;
+            canvas.height = videoPlayer.videoHeight;
+            var ctx = canvas.getContext('2d');
+            ctx.drawImage(videoPlayer, 0, 0, canvas.width, canvas.height);
+            var dataURI = canvas.toDataURL('image/jpeg');
+
+            var link = document.createElement('a');
+            link.download = 'screenshot.jpg';
+            link.href = dataURI;
+            link.click();
+        }
+    </script>
+</body>
+</html>
